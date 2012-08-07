@@ -6,6 +6,9 @@ use Carp qw/croak/;
 use XSLoader;
 
 our $VERSION = '0.01';
+use Exporter 'import';
+our @EXPORT_OK = qw(DumpLimited);
+our %EXPORT_TAGS = (all => \@EXPORT_OK);
 
 XSLoader::load('Data::Dumper::Limited', $VERSION);
 
