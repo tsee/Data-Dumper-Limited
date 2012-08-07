@@ -77,10 +77,25 @@ ddl_buf_cat_str_nocheck(pTHX_ ddl_encoder_t *enc, const char *str, size_t len)
 
 #define ddl_buf_cat_str_s(enc, str) ddl_buf_cat_str(aTHX_ enc, (str), strlen(str))
 
+inline void
+ddl_buf_cat_char(pTHX_ ddl_encoder_t *enc, const char c)
+{
+  BUF_SIZE_ASSERT(enc, 1);
+  *enc->pos++ = c;
+}
+
+inline void
+ddl_buf_cat_char_nocheck(pTHX_ ddl_encoder_t *enc, const char c)
+{
+  *enc->pos++ = c;
+}
 
 void
 ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src)
 {
+  if (SvGMAGICAL(src))
+    mg_get(src);
+
   if (!SvOK(src)) {
     ddl_buf_cat_str_s(enc, "undef");
   }
