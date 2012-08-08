@@ -32,12 +32,18 @@ Steffen Mueller E<lt>smueller@cpan.orgE<gt>
 
 Yves Orton E<lt>demerphq@gmail.comE<gt>
 
+Some inspiration and code was taken from Marc Lehmann's
+excellent JSON::XS module due to obvious overlap in
+problem domain.
+
 =head1 COPYRIGHT AND LICENSE
 
 Copyright (C) 2012 by Steffen Mueller
 
+Except portions taken from Marc Lehmann's code for the JSON::XS
+module. The license for JSON::XS is the same as for this module:
+
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8 or,
-at your option, any later version of Perl 5 you may have available.
+it under the same terms as Perl itself.
 
 =cut
