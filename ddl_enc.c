@@ -290,69 +290,190 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
     ddl_buf_cat_char(enc,'"');
     while (scan < scan_end) {
         UV cp= *scan;
-        if (cp < 32) {
-            scan++;
-            switch ((U8)cp) {
-                case '\0':
-                    ddl_buf_cat_str_s(enc, "\\0");
-                    break;
-                case '\n':
-                    ddl_buf_cat_str_s(enc, "\\n");
-                    break;
-                case '\r':
-                    ddl_buf_cat_str_s(enc, "\\r");
-                    break;
-                case '\t':
-                    ddl_buf_cat_str_s(enc, "\\t");
-                    break;
-                case '\f':
-                    ddl_buf_cat_str_s(enc, "\\f");
-                    break;
-                case '\a':
-                    ddl_buf_cat_str_s(enc, "\\a");
-                    break;
-                default:
-                    goto octal;
-            }
-        } else if (cp < 128) {
-            scan++;
-            if (cp == '"') {
-                ddl_buf_cat_str_s(enc, "\\\"");
-            } else if (cp == '\\') {
-                ddl_buf_cat_str_s(enc, "\\\\");
-            } else {
-                ddl_buf_cat_char(enc, cp);
-            }
-        } else if (is_utf8) {
-            // cp=  Perl_utf8_to_uvchr_buf(aTHX_ scan, scan_end, &ulen);
-            cp= Perl_utf8_to_uvchr(aTHX_ (U8 *)scan, &ulen);
-            scan += ulen;
-            /* utf8 >= 128 - hex */
-            BUF_SIZE_ASSERT(enc,21); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
-            ulen= sprintf(enc->pos,"\\x{%"UVxf"}",cp); /* no need for snprintf here IMO, if the the size assert is right */
-            enc->pos += ulen;
-        } else {
-            /* non-utf8 0-31, 128-255 */
-            /* octal */
-            scan++;
-          octal:
-            BUF_SIZE_ASSERT(enc,6); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
-            if (scan >= scan_end || *scan < '0' || *scan> '9') {
-                ulen= sprintf(enc->pos,"\\%"UVof,cp);
-                enc->pos += ulen;
-            } else {
-                ulen= sprintf(enc->pos,"\\%03"UVof,cp);
-                enc->pos += ulen;
-            }
-            /* maybe the following would be faster?
+        switch ((U8)cp) {
+        case '\0':
             ddl_buf_cat_str_s(enc, "\\0");
-            if (cp & 192)
-                ddl_buf_cat_char(enc, '0' + (cp & 192) >> 6);
-            if (cp & 56)
-                ddl_buf_cat_char(enc, '0' + (cp & 56) >> 3);
-            if (cp & 7)
-                ddl_buf_cat_char(enc, '0' + (cp & 7) >> 3);
-            */
+            scan++;
+            break;
+        case '\n':
+            ddl_buf_cat_str_s(enc, "\\n");
+            scan++;
+            break;
+        case '\r':
+            ddl_buf_cat_str_s(enc, "\\r");
+            scan++;
+            break;
+        case '\t':
+            ddl_buf_cat_str_s(enc, "\\t");
+            scan++;
+            break;
+        case '\f':
+            ddl_buf_cat_str_s(enc, "\\f");
+            scan++;
+            break;
+        case '\a':
+            ddl_buf_cat_str_s(enc, "\\a");
+            scan++;
+            break;
+        case '"':
+            ddl_buf_cat_str_s(enc, "\\\"");
+            scan++;
+            break;
+        case '\\':
+            ddl_buf_cat_str_s(enc, "\\\\");
+            scan++;
+            break;
+        case '$':
+            ddl_buf_cat_str_s(enc, "\\$");
+            scan++;
+            break;
+        case '@':
+            ddl_buf_cat_str_s(enc, "\\@");
+            scan++;
+            break;
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 8:
+        case 11:
+        case 14:
+        case 15:
+        case 16:
+        case 17:
+        case 18:
+        case 19:
+        case 20:
+        case 21:
+        case 22:
+        case 23:
+        case 24:
+        case 25:
+        case 26:
+        case 27:
+        case 28:
+        case 29:
+        case 30:
+        case 31:
+            goto octal;
+            break; /* not reached */
+        case ' ':
+        case '!':
+        case '#':
+        case '%':
+        case '&':
+        case '\'':
+        case '(':
+        case ')':
+        case '*':
+        case '+':
+        case ',':
+        case '-':
+        case '.':
+        case '/':
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+        case ':':
+        case ';':
+        case '<':
+        case '=':
+        case '>':
+        case '?':
+        case 'A':
+        case 'B':
+        case 'C':
+        case 'D':
+        case 'E':
+        case 'F':
+        case 'G':
+        case 'H':
+        case 'I':
+        case 'J':
+        case 'K':
+        case 'L':
+        case 'M':
+        case 'N':
+        case 'O':
+        case 'P':
+        case 'Q':
+        case 'R':
+        case 'S':
+        case 'T':
+        case 'U':
+        case 'V':
+        case 'W':
+        case 'X':
+        case 'Y':
+        case 'Z':
+        case '[':
+        case ']':
+        case '^':
+        case '_':
+        case '`':
+        case 'a':
+        case 'b':
+        case 'c':
+        case 'd':
+        case 'e':
+        case 'f':
+        case 'g':
+        case 'h':
+        case 'i':
+        case 'j':
+        case 'k':
+        case 'l':
+        case 'm':
+        case 'n':
+        case 'o':
+        case 'p':
+        case 'q':
+        case 'r':
+        case 's':
+        case 't':
+        case 'u':
+        case 'v':
+        case 'w':
+        case 'x':
+        case 'y':
+        case 'z':
+        case '{':
+        case '|':
+        case '}':
+        case '~':
+        case 127:
+            ddl_buf_cat_char(enc, cp);
+            scan++;
+            break;
+        default:
+            if ( is_utf8 ) {
+                // cp=  Perl_utf8_to_uvchr_buf(aTHX_ scan, scan_end, &ulen);
+                cp= Perl_utf8_to_uvchr(aTHX_ (U8 *)scan, &ulen);
+                scan += ulen;
+                BUF_SIZE_ASSERT(enc,21); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
+                ulen= sprintf(enc->pos,"\\x{%"UVxf"}",cp); /* no need for snprintf here IMO, if the the size assert is right */
+                enc->pos += ulen;
+            } else {
+              octal:
+                scan++;
+                BUF_SIZE_ASSERT(enc,6); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
+                if (scan >= scan_end || *scan < '0' || *scan> '9') {
+                    ulen= sprintf(enc->pos,"\\%"UVof,cp);
+                    enc->pos += ulen;
+                } else {
+                    ulen= sprintf(enc->pos,"\\%03"UVof,cp);
+                    enc->pos += ulen;
+                }
+            }
         }
     }
     ddl_buf_cat_char(enc,'"');
