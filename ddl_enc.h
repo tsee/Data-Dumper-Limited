@@ -4,7 +4,6 @@
 #include "EXTERN.h"
 #include "perl.h"
 
-
 typedef struct PTABLE * ptable_ptr;
 typedef struct {
   char *buf_start;     /* ptr to "physical" start of output buffer */
