@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Data::Dumper::Limited qw(DumpLimited);
+use Scalar::Util qw(weaken);
 
 use Test::More;
 
@@ -39,6 +40,26 @@ is(DumpLimited([\$x, \$x]), "[\\2.1,\\2.1]", "multiple identical refs");
 my $r;
 $r = [\$r];
 ok(not(eval {DumpLimited($r); 1}) && $@, "cyclic refs barf");
+undef $r->[0];
 
-pass();
+$r = [[[\$r]]];
+ok(not(eval {DumpLimited($r); 1}) && $@, "deep cyclic refs barf");
+undef $r->[0];
+
+$x = [];
+$r = [$x, $x];
+is(DumpLimited($r), "[[],[]]", "multiple identical refs (2)");
+
+weaken($r->[1]);
+is(DumpLimited($r), "[[],[]]", "multiple identical refs (2)");
+
+$r = [[\$r, \$r]];
+weaken($r->[0][0]);
+ok(not(eval {DumpLimited($r); 1}) && $@, "deep cyclic refs barf, even with weakrefs");
+undef $r->[0];
+
+$r = [$x, $x];
+ok(not(eval {DumpLimited($r, {disallow_multi => 1}); 1}) && $@, "non-cyclic, repeated refs barf under disallow_multi");
+
+
 done_testing();
