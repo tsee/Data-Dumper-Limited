@@ -11,6 +11,13 @@
 /* three extra for rounding, sign, and end of string */
 #define IVUV_MAXCHARS (sizeof (UV) * CHAR_BIT * 28 / 93 + 3)
 
+#define F_UNDEF_BLESSED 1UL
+
+/* some static function declarations */
+static void ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src);
+static void ddl_dump_av(pTHX_ ddl_encoder_t *enc, AV *src);
+static void ddl_dump_hv(pTHX_ ddl_encoder_t *enc, HV *src);
+
 void ddl_destructor_hook(void *p)
 {
   ddl_encoder_t *enc = (ddl_encoder_t *)p;
@@ -20,10 +27,13 @@ void ddl_destructor_hook(void *p)
   Safefree(enc);
 }
 
+/* Builds the C-level configuration and state struct.
+ * Automatically freed at scope boundary. */
 ddl_encoder_t *
 build_encoder_struct(pTHX_ HV *opt, SV *src_data)
 {
   ddl_encoder_t *enc;
+  SV **svp;
 
   Newx(enc, 1, ddl_encoder_t);
   /* Register our structure for destruction on scope exit */
@@ -35,6 +45,12 @@ build_encoder_struct(pTHX_ HV *opt, SV *src_data)
   enc->buf_end = enc->buf_start + INITIALIZATION_SIZE;
   enc->pos = enc->buf_start;
   enc->depth = 0;
+  enc->flags = 0;
+
+  if (opt != NULL) {
+    if ( (svp = hv_fetchs(opt, "undef_blessed", 0)) && SvOK(*svp) && SvIV(*svp) != 0 )
+      enc->flags |= F_UNDEF_BLESSED;
+  }
 
   return enc;
 }
@@ -98,11 +114,15 @@ ddl_buf_cat_char_nocheck_int(pTHX_ ddl_encoder_t *enc, const char c)
 }
 #define ddl_buf_cat_char_nocheck(enc, c) ddl_buf_cat_char_nocheck_int(aTHX_ enc, c)
 
+
+/* Entry point for serialization. Dumps generic SVs and delegates
+ * to more specialized functions for RVs, etc. */
 void
 ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src)
 {
   SvGETMAGIC(src);
 
+  /* dump strings */
   if (SvPOKp(src)) {
     STRLEN len;
     char *str = SvPV(src, len);
@@ -112,11 +132,13 @@ ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src)
     //encode_str(enc, str, len, SvUTF8(src));
     ddl_buf_cat_char_nocheck(enc, '"');
   }
+  /* dump floats */
   else if (SvNOKp(src)) {
     BUF_SIZE_ASSERT(enc, NV_DIG + 32);
     Gconvert(SvNVX(src), NV_DIG, 0, enc->pos);
     enc->pos += strlen(enc->pos);
   }
+  /* dump ints */
   else if (SvIOKp(src)) {
     /* we assume we can always read an IV as a UV and vice versa
      * we assume two's complement
@@ -159,9 +181,11 @@ ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src)
             : snprintf(enc->pos, IVUV_MAXCHARS, "%"IVdf, (IV)SvIVX(src));
     }
   } /* end is an integer */
+  /* undef */
   else if (!SvOK(src)) {
     ddl_buf_cat_str_s(enc, "undef");
   }
+  /* dump references */
   else if (SvROK(src))
     ddl_dump_rv(aTHX_ enc, SvRV(src));
   else {
@@ -169,13 +193,80 @@ ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src)
   }
 }
 
-
-void
+/* Dump references, delegates to more specialized functions for
+ * arrays, hashes, etc. */
+static void
 ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
 {
+  svtype svt;
+
   if (++enc->depth > MAX_DEPTH) {
     croak("Reached maximum recursion depth of %u. Aborting", MAX_DEPTH);
   }
   
+  SvGETMAGIC(src);
+  svt = SvTYPE(src);
+
+  if (SvOBJECT(src)) {
+    if (enc->flags & F_UNDEF_BLESSED)
+      ddl_buf_cat_str_s(enc, "undef");
+    else
+      croak("encountered object '%s', but neither allow_blessed nor convert_blessed settings are enabled",
+            SvPV_nolen(sv_2mortal(newRV_inc(src))));
+  }
+  else if (svt == SVt_PVHV)
+    ddl_dump_hv(aTHX_ enc, (HV *)src);
+  else if (svt == SVt_PVAV)
+    ddl_dump_av(aTHX_ enc, (AV *)src);
+  else if (svt < SVt_PVAV) {
+    ddl_buf_cat_char(enc, '\\');
+    ddl_dump_sv(aTHX_ enc, src);
+  }
+  /* else if (enc->json.flags & F_ALLOW_UNKNOWN)
+   *  encode_str (enc, "null", 4, 0);
+   */
+  else {
+    croak("found %s, but it is not representable by Data::Dumper::Limited serialization",
+           SvPV_nolen(sv_2mortal(newRV_inc(src))));
+  }
 }
+
+
+static void
+ddl_dump_av(pTHX_ ddl_encoder_t *enc, AV *src)
+{
+  UV i, n;
+  SV **svp;
+
+  n = av_len(src)+1;
+  if (n == 0) {
+    ddl_buf_cat_str_s(enc, "[]");
+    return;
+  }
+
+  ddl_buf_cat_char(enc, '[');
+
+  svp = av_fetch(src, 0, 0);
+  if (svp == NULL)
+    croak("Got NULL SV from av_fetch");
+  ddl_dump_sv(aTHX_ enc, *svp);
+
+  for (i = 1; i < n; ++i) {
+    ddl_buf_cat_char(enc, ',');
+    svp = av_fetch(src, i, 0);
+    if (svp != NULL)
+      ddl_dump_sv(aTHX_ enc, *svp);
+    else
+      ddl_buf_cat_str_s(enc, "undef");
+  }
+
+  ddl_buf_cat_char(enc, ']');
+}
+
+
+static void
+ddl_dump_hv(pTHX_ ddl_encoder_t *enc, HV *src)
+{
+}
+
 

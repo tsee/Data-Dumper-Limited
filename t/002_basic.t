@@ -7,17 +7,27 @@ use Test::More;
 # silly thing, but tests that it doesn't crash and burn
 is(DumpLimited(undef), "undef");
 
-is(DumpLimited(1), "1");
-is(DumpLimited(-1), "-1");
-is(DumpLimited(2), "2");
-is(DumpLimited(2e10), "2". ("0" x 10));
-is(DumpLimited(99999.9881), "99999.9881");
-is(DumpLimited(-2.1111), "-2.1111");
+is(DumpLimited(1), "1", "integer");
+is(DumpLimited(-1), "-1", "negative int");
+is(DumpLimited(2), "2", "integer (2)");
+is(DumpLimited(2e10), "2". ("0" x 10), "large integer");
+is(DumpLimited(99999.9881), "99999.9881", "float");
+is(DumpLimited(-2.1111), "-2.1111", "negative float");
 
 TODO: {
   local $TODO = "Strings not implemented yet";
-  is(DumpLimited("foo"), '"foo"');
+  is(DumpLimited("foo"), '"foo"', "string");
 }
+
+my $x = 2.1;
+is(DumpLimited($x), "2.1", "variable");
+is(DumpLimited(\2.1), "\\2.1", "scalar reference");
+is(DumpLimited(\$x), "\\2.1", "scalar reference (2)");
+
+is(DumpLimited([]), "[]", "empty array");
+is(DumpLimited([1, 2.1]), "[1,2.1]", "array with numbers");
+
+is(DumpLimited([[[],[]],[]]), "[[[],[]],[]]", "nested arrays");
 
 pass();
 done_testing();
