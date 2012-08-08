@@ -7,12 +7,12 @@
 
 typedef struct PTABLE * ptable_ptr;
 typedef struct {
-  char *buf_start;
-  char *buf_end;
-  char *pos;
-  U32 flags;
-  unsigned int depth;
-  ptable_ptr seenhash;
+  char *buf_start;     /* ptr to "physical" start of output buffer */
+  char *buf_end;       /* ptr to end of output buffer */
+  char *pos;           /* ptr to current position within output buffer */
+  U32 flags;           /* flag-like options: See F_* defines in ddl_enc.c */
+  unsigned int depth;  /* current Perl-ref recursion depth */
+  ptable_ptr seenhash; /* ptr table for avoiding circular refs */
 } ddl_encoder_t;
 
 ddl_encoder_t *build_encoder_struct(pTHX_ HV *opt, SV *src_data);
