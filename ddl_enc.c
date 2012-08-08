@@ -45,7 +45,6 @@ build_encoder_struct(pTHX_ HV *opt, SV *src_data)
   SAVEDESTRUCTOR(&ddl_destructor_hook, (void *)enc);
 
   /* Init struct */
-  enc->src = src_data;
   Newx(enc->buf_start, INITIALIZATION_SIZE, char);
   enc->buf_end = enc->buf_start + INITIALIZATION_SIZE;
   enc->pos = enc->buf_start;

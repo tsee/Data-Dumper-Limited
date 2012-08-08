@@ -7,7 +7,6 @@
 
 typedef struct PTABLE * ptable_ptr;
 typedef struct {
-  SV *src;
   char *buf_start;
   char *buf_end;
   char *pos;
