@@ -16,9 +16,20 @@ is(DumpLimited(2e10), "2". ("0" x 10), "large integer");
 is(DumpLimited(99999.9881), "99999.9881", "float");
 is(DumpLimited(-2.1111), "-2.1111", "negative float");
 
-TODO: {
-  local $TODO = "Strings not implemented yet";
-  is(DumpLimited("foo"), '"foo"', "string");
+{
+    my $latin1= "Ba\xDF";
+    my $uni= $latin1;
+    utf8::upgrade($uni);
+    is(DumpLimited("foo"), '"foo"', "string - simple");
+    is(DumpLimited($latin1), '"Ba\\337"', "0xDF - string latin");
+    is(DumpLimited($uni), '"Ba\\x{df}"', "0xDF - string uni");
+    for my $want ('"\\0012\\0034"','"\\1x\\3y"','"\\r\\n\\t\\f\\a\\0\\"\\\\"','"\\x{100}"') {
+          $latin1= eval $want;
+          $uni= $latin1;
+          utf8::upgrade($uni);
+          is(DumpLimited($latin1), $want, "string (latin)");
+          is(DumpLimited($uni), $want, "string (uni)");
+    }
 }
 
 my $x = 2.1;

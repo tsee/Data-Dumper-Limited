@@ -22,6 +22,7 @@ static void ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src);
 static void ddl_dump_av(pTHX_ ddl_encoder_t *enc, AV *src);
 static void ddl_dump_hv(pTHX_ ddl_encoder_t *enc, HV *src);
 static void ddl_dump_hk(pTHX_ ddl_encoder_t *enc, HE *src);
+static void ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_utf8);
 
 void ddl_destructor_hook(void *p)
 {
@@ -65,6 +66,8 @@ build_encoder_struct(pTHX_ HV *opt, SV *src_data)
   return enc;
 }
 
+
+
 /* Entry point for serialization. Dumps generic SVs and delegates
  * to more specialized functions for RVs, etc. */
 void
@@ -79,7 +82,7 @@ ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src)
     BUF_SIZE_ASSERT(enc, 2 + len);
     ddl_buf_cat_char_nocheck(enc, '"');
     /* FIXME */
-    //encode_str(enc, str, len, SvUTF8(src));
+    ddl_dump_pv(aTHX_ enc, str, len, SvUTF8(src));
     ddl_buf_cat_char_nocheck(enc, '"');
   }
   /* dump floats */
@@ -185,7 +188,7 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
     ddl_dump_sv(aTHX_ enc, src);
   }
   /* else if (enc->json.flags & F_ALLOW_UNKNOWN)
-   *  encode_str (enc, "null", 4, 0);
+   *  ddl_dump_pv(aTHX_ enc, "null", 4, 0);
    */
   else {
     croak("found %s, but it is not representable by Data::Dumper::Limited serialization",
@@ -275,14 +278,88 @@ ddl_dump_hk(pTHX_ ddl_encoder_t *enc, HE *src)
     SvGETMAGIC(sv);
     str = SvPV(sv, len);
 
-    /* FIXME */
-    /* encode_str(enc, str, len, SvUTF8(sv)); */
+    ddl_dump_pv(aTHX_ enc, str, len, SvUTF8(sv));
   }
   else {
-    /* FIXME */
-    /* encode_str(enc, HeKEY(src), HeKLEN(src), HeKUTF8(src)); */
+    ddl_dump_pv(aTHX_ enc, HeKEY(src), HeKLEN(src), HeKUTF8(src));
   }
 
   ddl_buf_cat_char(enc, '"');
+}
+
+static void
+ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_utf8)
+{
+    const U8 *scan= (U8*)src;
+    const U8 *scan_end= (U8*)src + src_len;
+    STRLEN ulen;
+
+    while (scan < scan_end) {
+        UV cp= *scan;
+        if (cp < 32) {
+            scan++;
+            switch ((U8)cp) {
+                case '\0':
+                    ddl_buf_cat_str_s(enc, "\\0");
+                    break;
+                case '\n':
+                    ddl_buf_cat_str_s(enc, "\\n");
+                    break;
+                case '\r':
+                    ddl_buf_cat_str_s(enc, "\\r");
+                    break;
+                case '\t':
+                    ddl_buf_cat_str_s(enc, "\\t");
+                    break;
+                case '\f':
+                    ddl_buf_cat_str_s(enc, "\\f");
+                    break;
+                case '\a':
+                    ddl_buf_cat_str_s(enc, "\\a");
+                    break;
+                default:
+                    goto octal;
+            }
+        } else if (cp < 128) {
+            scan++;
+            if (cp == '"') {
+                ddl_buf_cat_str_s(enc, "\\\"");
+            } else if (cp == '\\') {
+                ddl_buf_cat_str_s(enc, "\\\\");
+            } else {
+                ddl_buf_cat_char(enc, cp);
+            }
+        } else if (is_utf8) {
+            // cp=  Perl_utf8_to_uvchr_buf(aTHX_ scan, scan_end, &ulen);
+            cp= Perl_utf8_to_uvchr(aTHX_ (U8 *)scan, &ulen);
+            scan += ulen;
+            /* utf8 >= 128 - hex */
+            BUF_SIZE_ASSERT(enc,21); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
+            ulen= sprintf(enc->pos,"\\x{%"UVxf"}",cp); /* no need for snprintf here IMO, if the the size assert is right */
+            enc->pos += ulen;
+        } else {
+            /* non-utf8 0-31, 128-255 */
+            /* octal */
+            scan++;
+          octal:
+            BUF_SIZE_ASSERT(enc,6); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
+            if (scan >= scan_end || *scan < '0' || *scan> '9') {
+                ulen= sprintf(enc->pos,"\\%"UVof,cp);
+                enc->pos += ulen;
+            } else {
+                ulen= sprintf(enc->pos,"\\%03"UVof,cp);
+                enc->pos += ulen;
+            }
+            /* maybe the following would be faster?
+            ddl_buf_cat_str_s(enc, "\\0");
+            if (cp & 192)
+                ddl_buf_cat_char(enc, '0' + (cp & 192) >> 6);
+            if (cp & 56)
+                ddl_buf_cat_char(enc, '0' + (cp & 56) >> 3);
+            if (cp & 7)
+                ddl_buf_cat_char(enc, '0' + (cp & 7) >> 3);
+            */
+        }
+    }
 }
 
