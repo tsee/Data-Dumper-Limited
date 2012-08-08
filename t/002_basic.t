@@ -34,7 +34,11 @@ TODO: {
   is(DumpLimited({"aaa" => [1,2,3]}), q!{"aaa",[1,2,3]}!, "hash with simple key");
 }
 
-DumpLimited([\$x, \$x]);
+is(DumpLimited([\$x, \$x]), "[\\2.1,\\2.1]", "multiple identical refs");
+
+my $r;
+$r = [\$r];
+ok(not(eval {DumpLimited($r); 1}) && $@, "cyclic refs barf");
 
 pass();
 done_testing();

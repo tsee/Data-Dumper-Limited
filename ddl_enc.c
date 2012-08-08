@@ -13,7 +13,8 @@
 /* three extra for rounding, sign, and end of string */
 #define IVUV_MAXCHARS (sizeof (UV) * CHAR_BIT * 28 / 93 + 3)
 
-#define F_UNDEF_BLESSED 1UL
+#define F_UNDEF_BLESSED             1UL
+#define F_DISALLOW_MULTI_OCCURRENCE  2UL
 
 /* some static function declarations */
 static void ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src);
@@ -54,6 +55,8 @@ build_encoder_struct(pTHX_ HV *opt, SV *src_data)
   if (opt != NULL) {
     if ( (svp = hv_fetchs(opt, "undef_blessed", 0)) && SvOK(*svp) && SvIV(*svp) != 0 )
       enc->flags |= F_UNDEF_BLESSED;
+    if ( (svp = hv_fetchs(opt, "disallow_multi", 0)) && SvOK(*svp) && SvIV(*svp) != 0 )
+      enc->flags |= F_DISALLOW_MULTI_OCCURRENCE;
   }
 
   /* TODO: We could do this lazily: Only if there's references with high refcount/weakrefs */
@@ -247,6 +250,13 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
   else {
     croak("found %s, but it is not representable by Data::Dumper::Limited serialization",
            SvPV_nolen(sv_2mortal(newRV_inc(src))));
+  }
+
+  /* If we DO allow multiple occurrence of the same ref (default), then
+   * we need to drop its seenhash entry as soon as it cannot be a cyclic
+   * ref any more. */
+  if (!(enc->flags & F_DISALLOW_MULTI_OCCURRENCE)) {
+    PTABLE_delete(enc->seenhash, src);
   }
 }
 
