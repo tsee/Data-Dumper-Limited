@@ -59,6 +59,7 @@ static PTABLE_t * PTABLE_new(void);
 static PTABLE_ENTRY_t * PTABLE_find(PTABLE_t *tbl, const void *key);
 static void * PTABLE_fetch(PTABLE_t *tbl, const void *key);
 static void PTABLE_store(PTABLE_t *tbl, void *key, void *value);
+static void PTABLE_delete(PTABLE_t *tbl, void *key);
 static void PTABLE_grow(PTABLE_t *tbl);
 static void PTABLE_clear(PTABLE_t *tbl);
 static void PTABLE_free(PTABLE_t *tbl);
@@ -180,6 +181,36 @@ PTABLE_clear(PTABLE_t *tbl)
         } while (riter--);
 
         tbl->tbl_items = 0;
+    }
+}
+
+/* remove one entry from a ptr table */
+
+static void
+PTABLE_delete(PTABLE_t *tbl, void *key)
+{
+    PTABLE_ENTRY_t *tblent;
+    PTABLE_ENTRY_t *tblent_prev;
+
+    if (!tbl || !tbl->tbl_items)
+        return;
+
+    const UV hash = PTABLE_HASH(key);
+    tblent_prev = NULL;
+    tblent = tbl->tbl_ary[hash & tbl->tbl_max];
+
+    for (; tblent; tblent_prev = tblent, tblent = tblent->next) {
+        if (tblent->key == key) {
+            if (tblent_prev != NULL) {
+                tblent_prev->next = tblent->next;
+            }
+            else {
+                /* First entry in chain */
+                tbl->tbl_ary[hash & tbl->tbl_max] = tblent->next;
+            }
+            Safefree(tblent);
+            break;
+        }
     }
 }
 
