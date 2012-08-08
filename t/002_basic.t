@@ -34,5 +34,7 @@ TODO: {
   is(DumpLimited({"aaa" => [1,2,3]}), q!{"aaa",[1,2,3]}!, "hash with simple key");
 }
 
+DumpLimited([\$x, \$x]);
+
 pass();
 done_testing();

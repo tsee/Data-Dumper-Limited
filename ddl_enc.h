@@ -4,6 +4,8 @@
 #include "EXTERN.h"
 #include "perl.h"
 
+
+typedef struct PTABLE * ptable_ptr;
 typedef struct {
   SV *src;
   char *buf_start;
@@ -11,6 +13,7 @@ typedef struct {
   char *pos;
   U32 flags;
   unsigned int depth;
+  ptable_ptr seenhash;
 } ddl_encoder_t;
 
 ddl_encoder_t *build_encoder_struct(pTHX_ HV *opt, SV *src_data);

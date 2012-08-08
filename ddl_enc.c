@@ -4,6 +4,8 @@
 
 #define PERL_NO_GET_CONTEXT
 
+#include "ptable.h"
+
 #define INITIALIZATION_SIZE 16384
 #define MAX_DEPTH 10000
 #define GROWTH_FACTOR 1.5
@@ -23,8 +25,9 @@ void ddl_destructor_hook(void *p)
 {
   ddl_encoder_t *enc = (ddl_encoder_t *)p;
   /* Exception cleanup. Under normal operation, we should have
-   * assigned NULL after we're done. */
+   * assigned NULL to buf_start after we're done. */
   Safefree(enc->buf_start);
+  PTABLE_free(enc->seenhash);
   Safefree(enc);
 }
 
@@ -52,6 +55,9 @@ build_encoder_struct(pTHX_ HV *opt, SV *src_data)
     if ( (svp = hv_fetchs(opt, "undef_blessed", 0)) && SvOK(*svp) && SvIV(*svp) != 0 )
       enc->flags |= F_UNDEF_BLESSED;
   }
+
+  /* TODO: We could do this lazily: Only if there's references with high refcount/weakrefs */
+  enc->seenhash = PTABLE_new();
 
   return enc;
 }
@@ -194,6 +200,7 @@ ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src)
   }
 }
 
+
 /* Dump references, delegates to more specialized functions for
  * arrays, hashes, etc. */
 static void
@@ -208,11 +215,22 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
   SvGETMAGIC(src);
   svt = SvTYPE(src);
 
+  /* Have to check the seen hash if high refcount or a weak ref */
+  if (SvREFCNT(src) > 1 || SvWEAKREF(src)) {
+    /* FIXME is the actual sv location the right thing to use? */
+    PTABLE_ENTRY_t *entry = PTABLE_find(enc->seenhash, src);
+    if (entry != NULL)
+      croak("Encountered reference multiple times: '%s'",
+            SvPV_nolen(sv_2mortal(newRV_inc(src))));
+    else
+      PTABLE_store(enc->seenhash, src, NULL);
+  }
+
   if (SvOBJECT(src)) {
     if (enc->flags & F_UNDEF_BLESSED)
       ddl_buf_cat_str_s(enc, "undef");
     else
-      croak("encountered object '%s', but neither allow_blessed nor convert_blessed settings are enabled",
+      croak("Encountered object '%s', but undef_blessed setting is not enabled",
             SvPV_nolen(sv_2mortal(newRV_inc(src))));
   }
   else if (svt == SVt_PVHV)
@@ -286,6 +304,7 @@ ddl_dump_hv(pTHX_ ddl_encoder_t *enc, HV *src)
   }
   ddl_buf_cat_char(enc, '}');
 }
+
 
 static void
 ddl_dump_hk(pTHX_ ddl_encoder_t *enc, HE *src)
