@@ -26,8 +26,13 @@ is(DumpLimited(\$x), "\\2.1", "scalar reference (2)");
 
 is(DumpLimited([]), "[]", "empty array");
 is(DumpLimited([1, 2.1]), "[1,2.1]", "array with numbers");
-
 is(DumpLimited([[[],[]],[]]), "[[[],[]],[]]", "nested arrays");
+
+is(DumpLimited({"" => [1,2,3]}), q!{"",[1,2,3]}!, "hash with empty string key");
+TODO: {
+  local $TODO = "Strings not implemented yet";
+  is(DumpLimited({"aaa" => [1,2,3]}), q!{"aaa",[1,2,3]}!, "hash with simple key");
+}
 
 pass();
 done_testing();

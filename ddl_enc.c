@@ -17,6 +17,7 @@
 static void ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src);
 static void ddl_dump_av(pTHX_ ddl_encoder_t *enc, AV *src);
 static void ddl_dump_hv(pTHX_ ddl_encoder_t *enc, HV *src);
+static void ddl_dump_hk(pTHX_ ddl_encoder_t *enc, HE *src);
 
 void ddl_destructor_hook(void *p)
 {
@@ -203,7 +204,7 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
   if (++enc->depth > MAX_DEPTH) {
     croak("Reached maximum recursion depth of %u. Aborting", MAX_DEPTH);
   }
-  
+
   SvGETMAGIC(src);
   svt = SvTYPE(src);
 
@@ -267,6 +268,52 @@ ddl_dump_av(pTHX_ ddl_encoder_t *enc, AV *src)
 static void
 ddl_dump_hv(pTHX_ ddl_encoder_t *enc, HV *src)
 {
+  HE *he;
+  ddl_buf_cat_char(enc, '{');
+  if (hv_iterinit(src) || SvMAGICAL(src)) {
+    if ((he = hv_iternext(src))) {
+      for (;;) {
+        ddl_dump_hk(aTHX_ enc, he);
+        ddl_buf_cat_char(enc, ','); /* see comments in ddl_dump_hk */
+        ddl_dump_sv(aTHX_ enc, SvMAGICAL(src) ? hv_iterval(src, he) : HeVAL(he));
+
+        if (!(he = hv_iternext(src)))
+          break;
+
+        ddl_buf_cat_char(enc, ',');
+      }
+    }
+  }
+  ddl_buf_cat_char(enc, '}');
 }
 
+static void
+ddl_dump_hk(pTHX_ ddl_encoder_t *enc, HE *src)
+{
+  /* FIXME we could scan the string to see whether we could
+   *       skip quoting the string and instead using a fat comma.
+   *       But that's a lot of extra coding work, potentially slow,
+   *       and a small gain.
+   *       Even if that's not done, we can always use the fat comma
+   *       for readability. Maybe make that configurable later? */
+  ddl_buf_cat_char(enc, '"');
+
+  if (HeKLEN(src) == HEf_SVKEY) {
+    SV *sv = HeSVKEY(src);
+    STRLEN len;
+    char *str;
+
+    SvGETMAGIC(sv);
+    str = SvPV(sv, len);
+
+    /* FIXME */
+    /* encode_str(enc, str, len, SvUTF8(sv)); */
+  }
+  else {
+    /* FIXME */
+    /* encode_str(enc, HeKEY(src), HeKLEN(src), HeKUTF8(src)); */
+  }
+
+  ddl_buf_cat_char(enc, '"');
+}
 
