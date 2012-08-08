@@ -80,10 +80,7 @@ ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src)
     STRLEN len;
     char *str = SvPV(src, len);
     BUF_SIZE_ASSERT(enc, 2 + len);
-    ddl_buf_cat_char_nocheck(enc, '"');
-    /* FIXME */
     ddl_dump_pv(aTHX_ enc, str, len, SvUTF8(src));
-    ddl_buf_cat_char_nocheck(enc, '"');
   }
   /* dump floats */
   else if (SvNOKp(src)) {
@@ -268,8 +265,6 @@ ddl_dump_hk(pTHX_ ddl_encoder_t *enc, HE *src)
    *       and a small gain.
    *       Even if that's not done, we can always use the fat comma
    *       for readability. Maybe make that configurable later? */
-  ddl_buf_cat_char(enc, '"');
-
   if (HeKLEN(src) == HEf_SVKEY) {
     SV *sv = HeSVKEY(src);
     STRLEN len;
@@ -283,8 +278,6 @@ ddl_dump_hk(pTHX_ ddl_encoder_t *enc, HE *src)
   else {
     ddl_dump_pv(aTHX_ enc, HeKEY(src), HeKLEN(src), HeKUTF8(src));
   }
-
-  ddl_buf_cat_char(enc, '"');
 }
 
 static void
@@ -294,6 +287,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
     const U8 *scan_end= (U8*)src + src_len;
     STRLEN ulen;
 
+    ddl_buf_cat_char(enc,'"');
     while (scan < scan_end) {
         UV cp= *scan;
         if (cp < 32) {
@@ -361,5 +355,6 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
             */
         }
     }
+    ddl_buf_cat_char(enc,'"');
 }
 
