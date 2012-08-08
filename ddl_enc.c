@@ -14,8 +14,9 @@
 /* three extra for rounding, sign, and end of string */
 #define IVUV_MAXCHARS (sizeof (UV) * CHAR_BIT * 28 / 93 + 3)
 
-#define F_UNDEF_BLESSED             1UL
-#define F_DISALLOW_MULTI_OCCURRENCE  2UL
+#define F_UNDEF_BLESSED                 1UL
+#define F_DISALLOW_MULTI_OCCURRENCE     2UL
+#define F_DUMP_OBJECTS_AS_UNBLESSED     4UL
 
 /* some static function declarations */
 static void ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src);
@@ -54,10 +55,12 @@ build_encoder_struct(pTHX_ HV *opt, SV *src_data)
   enc->flags = 0;
 
   if (opt != NULL) {
-    if ( (svp = hv_fetchs(opt, "undef_blessed", 0)) && SvOK(*svp) && SvIV(*svp) != 0 )
+    if ( (svp = hv_fetchs(opt, "undef_blessed", 0)) && SvTRUE(*svp))
       enc->flags |= F_UNDEF_BLESSED;
-    if ( (svp = hv_fetchs(opt, "disallow_multi", 0)) && SvOK(*svp) && SvIV(*svp) != 0 )
+    if ( (svp = hv_fetchs(opt, "disallow_multi", 0)) && SvTRUE(*svp))
       enc->flags |= F_DISALLOW_MULTI_OCCURRENCE;
+    if ( (svp = hv_fetchs(opt, "objects_unblessed", 0)) && SvTRUE(*svp))
+      enc->flags |= F_DUMP_OBJECTS_AS_UNBLESSED;
   }
 
   /* TODO: We could do this lazily: Only if there's references with high refcount/weakrefs */
@@ -169,7 +172,7 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
       PTABLE_store(enc->seenhash, src, NULL);
   }
 
-  if (SvOBJECT(src)) {
+  if (SvOBJECT(src) && (0 == (enc->flags & F_DUMP_OBJECTS_AS_UNBLESSED))) {
     if (enc->flags & F_UNDEF_BLESSED)
       ddl_buf_cat_str_s(enc, "undef");
     else
@@ -291,28 +294,36 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
     while (scan < scan_end) {
         UV cp= *scan;
         switch ((U8)cp) {
-        case '\0':
+        case 0:   /* 0 */
             ddl_buf_cat_str_s(enc, "\\0");
             scan++;
             break;
-        case '\n':
-            ddl_buf_cat_str_s(enc, "\\n");
+        case '\a': /* 7 */
+            ddl_buf_cat_str_s(enc, "\\a");
             scan++;
             break;
-        case '\r':
-            ddl_buf_cat_str_s(enc, "\\r");
+        case '\b': /* 8 */
+            ddl_buf_cat_str_s(enc, "\\b");
             scan++;
             break;
-        case '\t':
+        case '\t': /* 9 */
             ddl_buf_cat_str_s(enc, "\\t");
             scan++;
             break;
-        case '\f':
+        case '\n': /* 10 */
+            ddl_buf_cat_str_s(enc, "\\n");
+            scan++;
+            break;
+        case '\f': /* 12 */
             ddl_buf_cat_str_s(enc, "\\f");
             scan++;
             break;
-        case '\a':
-            ddl_buf_cat_str_s(enc, "\\a");
+        case '\r': /* 13 */
+            ddl_buf_cat_str_s(enc, "\\r");
+            scan++;
+            break;
+        case 27:
+            ddl_buf_cat_str_s(enc, "\\e");
             scan++;
             break;
         case '"':
@@ -337,7 +348,6 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
         case 4:
         case 5:
         case 6:
-        case 8:
         case 11:
         case 14:
         case 15:
@@ -352,7 +362,6 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
         case 24:
         case 25:
         case 26:
-        case 27:
         case 28:
         case 29:
         case 30:
@@ -466,7 +475,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
               octal:
                 scan++;
                 BUF_SIZE_ASSERT(enc,6); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
-                if (scan >= scan_end || *scan < '0' || *scan> '9') {
+                if (scan >= scan_end || *scan < '0' || *scan> '6') {
                     ulen= sprintf(enc->pos,"\\%"UVof,cp);
                     enc->pos += ulen;
                 } else {

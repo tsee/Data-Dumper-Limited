@@ -2,10 +2,10 @@
 use strict;
 use warnings;
 use Data::Dumper::Limited qw(DumpLimited);
+use Data::Dumper;
 use Scalar::Util qw(weaken);
-
 use Test::More;
-
+*qquote= \&Data::Dumper::qquote;
 # silly thing, but tests that it doesn't crash and burn
 is(DumpLimited(undef), "undef");
 
@@ -23,12 +23,23 @@ is(DumpLimited(-2.1111), "-2.1111", "negative float");
     is(DumpLimited("foo"), '"foo"', "string - simple");
     is(DumpLimited($latin1), '"Ba\\337"', "0xDF - string latin");
     is(DumpLimited($uni), '"Ba\\x{df}"', "0xDF - string uni");
-    for my $want ('"\\0012\\0034"','"\\1x\\3y"','"\\r\\n\\t\\f\\a\\0\\"\\\\"','"\\x{100}"') {
-          $latin1= eval $want;
+    for my $want (
+        '"\\0012\\0034"',
+        '"\\1x\\3y"',
+        '"\\b\\e\\r\\n\\t\\f\\a\\0\\"\\\\"',
+        '"\\x{100}"',
+        '"\\$foo"',
+        '"\\@foo"'
+    ) {
+          $latin1= eval $want
+            or die "$want\n$@";
           $uni= $latin1;
           utf8::upgrade($uni);
-          is(DumpLimited($latin1), $want, "string (latin)");
-          is(DumpLimited($uni), $want, "string (uni)");
+
+          is(DumpLimited($latin1), $want, "$want string (latin)");
+          is(DumpLimited($uni), $want, "$want string (uni)");
+          is(DumpLimited($latin1), qquote($latin1), "$want qquote (latin)");
+          is(DumpLimited($uni), qquote($uni), "$want qquote (uni)");
     }
 }
 
@@ -64,7 +75,7 @@ is(DumpLimited($r), "[[],[]]", "multiple identical refs (2)");
 
 $r = [[\$r, \$r]];
 weaken($r->[0][0]);
-ok(not(eval {DumpLimited($r); 1}) && $@, "deep cyclic refs barf, even with weakrefs");
+ok(not(eval {DumpLimited($r); 1}) && $@, "deep cyclic refs barf, even with weakrefs: $@");
 undef $r->[0];
 
 $r = [$x, $x];

@@ -47,7 +47,7 @@ ddl_buf_cat_str_nocheck(pTHX_ ddl_encoder_t *enc, const char *str, size_t len)
   enc->pos += len;
 }
 
-#define ddl_buf_cat_str_s(enc, str) ddl_buf_cat_str(aTHX_ enc, (str), strlen(str))
+#define ddl_buf_cat_str_s(enc, str) ddl_buf_cat_str(aTHX_ enc, ("" str), strlen("" str))
 
 inline void
 ddl_buf_cat_char_int(pTHX_ ddl_encoder_t *enc, const char c)
