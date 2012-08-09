@@ -289,57 +289,69 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
     const U8 *scan= (U8*)src;
     const U8 *scan_end= (U8*)src + src_len;
     STRLEN ulen;
+    size_t ichar = 0;
+    size_t max_char;
 
-    ddl_buf_cat_char(enc,'"');
+#define NCHARS 100
+/* arbitrary assumption */
+#define NCHARS_OUT_PER_CHAR_IN 21
+    max_char = MIN(NCHARS, src_len);
+    BUF_SIZE_ASSERT(enc, max_char * NCHARS_OUT_PER_CHAR_IN + 2);
+    ddl_buf_cat_char_nocheck(enc,'"');
     while (scan < scan_end) {
+        if (++ichar == max_char) {
+            max_char = MIN(NCHARS, (size_t)(scan_end-scan));
+            BUF_SIZE_ASSERT(enc, max_char * NCHARS_OUT_PER_CHAR_IN + 2);
+            ichar = 0;
+        }
         UV cp= *scan;
         switch ((U8)cp) {
         case 0:   /* 0 */
-            ddl_buf_cat_str_s(enc, "\\0");
+            ddl_buf_cat_str_s_nocheck(enc, "\\0");
             scan++;
             break;
         case '\a': /* 7 */
-            ddl_buf_cat_str_s(enc, "\\a");
+            ddl_buf_cat_str_s_nocheck(enc, "\\a");
             scan++;
             break;
         case '\b': /* 8 */
-            ddl_buf_cat_str_s(enc, "\\b");
+            ddl_buf_cat_str_s_nocheck(enc, "\\b");
             scan++;
             break;
         case '\t': /* 9 */
-            ddl_buf_cat_str_s(enc, "\\t");
+            ddl_buf_cat_str_s_nocheck(enc, "\\t");
             scan++;
             break;
         case '\n': /* 10 */
-            ddl_buf_cat_str_s(enc, "\\n");
+            ddl_buf_cat_str_s_nocheck(enc, "\\n");
             scan++;
             break;
         case '\f': /* 12 */
-            ddl_buf_cat_str_s(enc, "\\f");
+            ddl_buf_cat_str_s_nocheck(enc, "\\f");
             scan++;
             break;
         case '\r': /* 13 */
-            ddl_buf_cat_str_s(enc, "\\r");
+            ddl_buf_cat_str_s_nocheck(enc, "\\r");
             scan++;
             break;
         case 27:
-            ddl_buf_cat_str_s(enc, "\\e");
+            ddl_buf_cat_str_s_nocheck(enc, "\\e");
             scan++;
             break;
         case '"':
-            ddl_buf_cat_str_s(enc, "\\\"");
+            ddl_buf_cat_str_s_nocheck(enc, "\\\"");
             scan++;
             break;
         case '\\':
-            ddl_buf_cat_str_s(enc, "\\\\");
+            ddl_buf_cat_str_s_nocheck(enc, "\\\\");
             scan++;
             break;
         case '$':
-            ddl_buf_cat_str_s(enc, "\\$");
+            ddl_buf_cat_str_s_nocheck(enc, "\\$");
             scan++;
             break;
         case '@':
-            ddl_buf_cat_str_s(enc, "\\@");
+            ddl_buf_cat_str_s_nocheck(enc, "\\@");
             scan++;
             break;
         case 1:
@@ -460,7 +472,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
         case '}':
         case '~':
         case 127:
-            ddl_buf_cat_char(enc, cp);
+            ddl_buf_cat_char_nocheck(enc, cp);
             scan++;
             break;
         default:
@@ -468,13 +480,13 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
                 // cp=  Perl_utf8_to_uvchr_buf(aTHX_ scan, scan_end, &ulen);
                 cp= Perl_utf8_to_uvchr(aTHX_ (U8 *)scan, &ulen);
                 scan += ulen;
-                BUF_SIZE_ASSERT(enc,21); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
+                /* BUF_SIZE_ASSERT(enc,21); */ /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
                 ulen= sprintf(enc->pos,"\\x{%"UVxf"}",cp); /* no need for snprintf here IMO, if the the size assert is right */
                 enc->pos += ulen;
             } else {
               octal:
                 scan++;
-                BUF_SIZE_ASSERT(enc,6); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
+                /* BUF_SIZE_ASSERT(enc,6); */ /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
                 if (scan >= scan_end || *scan < '0' || *scan> '6') {
                     ulen= sprintf(enc->pos,"\\%"UVof,cp);
                     enc->pos += ulen;
@@ -485,6 +497,6 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
             }
         }
     }
-    ddl_buf_cat_char(enc,'"');
+    ddl_buf_cat_char_nocheck(enc,'"');
 }
 
