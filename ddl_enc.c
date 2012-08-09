@@ -288,7 +288,17 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
 {
     const U8 *scan= (U8*)src;
     const U8 *scan_end= (U8*)src + src_len;
+    const U8 *plain_start= 0;
+    const U8 *plain_end= 0;
     STRLEN ulen;
+
+#define CLEAR_PLAIN_START \
+                if (plain_start) {                                                      \
+                    ddl_buf_cat_str(aTHX_ enc, (const char *)plain_start, plain_end - plain_start);   \
+                    plain_start= plain_end= 0;                                          \
+                }                                                                       \
+
+    BUF_SIZE_ASSERT(enc,src_len);
 
     ddl_buf_cat_char(enc,'"');
     while (scan < scan_end) {
@@ -460,11 +470,16 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
         case '}':
         case '~':
         case 127:
-            ddl_buf_cat_char(enc, cp);
-            scan++;
+            if (plain_start) {
+                plain_end= ++scan;
+            } else {
+                plain_start= scan;
+                plain_end= ++scan;
+            }
             break;
         default:
             if ( is_utf8 ) {
+                CLEAR_PLAIN_START
                 // cp=  Perl_utf8_to_uvchr_buf(aTHX_ scan, scan_end, &ulen);
                 cp= Perl_utf8_to_uvchr(aTHX_ (U8 *)scan, &ulen);
                 scan += ulen;
@@ -473,6 +488,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
                 enc->pos += ulen;
             } else {
               octal:
+                CLEAR_PLAIN_START
                 scan++;
                 BUF_SIZE_ASSERT(enc,6); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
                 if (scan >= scan_end || *scan < '0' || *scan> '6') {
@@ -485,6 +501,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
             }
         }
     }
+    CLEAR_PLAIN_START
     ddl_buf_cat_char(enc,'"');
 }
 
