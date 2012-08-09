@@ -25,6 +25,7 @@ my @tests = (
   do {use utf8; ["搜索酒店", "utf8 string"] },
   [$latin1, "latin1 string"],
   [$uni, "unicode string"],
+  ["a\nb", "string with newline"],
 
   [\undef, "constant scalar undef ref", "unimplemented in Data::Undump"],
   [\"foo", "constant scalar string ref", "unimplemented in Data::Undump"],
@@ -68,6 +69,9 @@ sub does_roundtrip {
     return;
   };
   pass("DumpLimited(): $name");
+  print "#" . $serialized, "\n";
+  use Data::Dumper;
+  print Data::Dumper::Dumper($src_structure);
 
   my $out = undump($serialized);
   my $err = $@;
