@@ -290,6 +290,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
     const U8 *scan_end= (U8*)src + src_len;
     const U8 *plain_start= 0;
     const U8 *plain_end= 0;
+    UV cp;
     STRLEN ulen;
 
 #define CLEAR_PLAIN_START(enc, plain_start, plain_end)                                          \
@@ -304,7 +305,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
 
     ddl_buf_cat_char(enc,'"');
     while (scan < scan_end) {
-        UV cp= *scan;
+        cp= *scan;
         switch ((U8)cp) {
         case 0:   /* 0 */
             cp= '0';
