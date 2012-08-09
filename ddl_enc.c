@@ -292,11 +292,13 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
     const U8 *plain_end= 0;
     STRLEN ulen;
 
-#define CLEAR_PLAIN_START \
-                if (plain_start) {                                                      \
-                    ddl_buf_cat_str(aTHX_ enc, (const char *)plain_start, plain_end - plain_start);   \
-                    plain_start= plain_end= 0;                                          \
-                }                                                                       \
+#define CLEAR_PLAIN_START(enc, plain_start, plain_end)                                          \
+    STMT_START {                                                                                \
+        if (plain_start) {                                                                      \
+            ddl_buf_cat_str(aTHX_ enc, (const char *)plain_start, plain_end - plain_start);     \
+            plain_start= plain_end= 0;                                                          \
+        }                                                                                       \
+    } STMT_END
 
     BUF_SIZE_ASSERT(enc,src_len);
 
@@ -305,51 +307,44 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
         UV cp= *scan;
         switch ((U8)cp) {
         case 0:   /* 0 */
-            ddl_buf_cat_str_s(enc, "\\0");
-            scan++;
-            break;
+            cp= '0';
+            goto simple_esc;
         case '\a': /* 7 */
-            ddl_buf_cat_str_s(enc, "\\a");
-            scan++;
-            break;
+            cp= 'a';
+            goto simple_esc;
         case '\b': /* 8 */
-            ddl_buf_cat_str_s(enc, "\\b");
-            scan++;
-            break;
+            cp= 'b';
+            goto simple_esc;
         case '\t': /* 9 */
-            ddl_buf_cat_str_s(enc, "\\t");
-            scan++;
-            break;
+            cp= 't';
+            goto simple_esc;
         case '\n': /* 10 */
-            ddl_buf_cat_str_s(enc, "\\n");
-            scan++;
-            break;
+            cp= 'n';
+            goto simple_esc;
         case '\f': /* 12 */
-            ddl_buf_cat_str_s(enc, "\\f");
-            scan++;
-            break;
+            cp= 'f';
+            goto simple_esc;
         case '\r': /* 13 */
-            ddl_buf_cat_str_s(enc, "\\r");
-            scan++;
-            break;
+            cp= 'r';
+            goto simple_esc;
         case 27:
-            ddl_buf_cat_str_s(enc, "\\e");
-            scan++;
-            break;
+            cp= 'e';
+            goto simple_esc;
+            /* fallthrough */
         case '"':
-            ddl_buf_cat_str_s(enc, "\\\"");
-            scan++;
-            break;
+            /* fallthrough */
         case '\\':
-            ddl_buf_cat_str_s(enc, "\\\\");
-            scan++;
-            break;
+            /* fallthrough */
         case '$':
-            ddl_buf_cat_str_s(enc, "\\$");
-            scan++;
-            break;
+            /* fallthrough */
         case '@':
-            ddl_buf_cat_str_s(enc, "\\@");
+            /* fallthrough */
+            /* handle simple escapes */
+        simple_esc:
+            CLEAR_PLAIN_START(enc,plain_start,plain_end);
+            BUF_SIZE_ASSERT(enc,2);         /* max size of a special escape including null*/
+            *enc->pos++= '\\';
+            *enc->pos++= cp;
             scan++;
             break;
         case 1:
@@ -479,7 +474,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
             break;
         default:
             if ( is_utf8 ) {
-                CLEAR_PLAIN_START
+                CLEAR_PLAIN_START(enc,plain_start,plain_end);
                 // cp=  Perl_utf8_to_uvchr_buf(aTHX_ scan, scan_end, &ulen);
                 cp= Perl_utf8_to_uvchr(aTHX_ (U8 *)scan, &ulen);
                 scan += ulen;
@@ -488,7 +483,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
                 enc->pos += ulen;
             } else {
               octal:
-                CLEAR_PLAIN_START
+                CLEAR_PLAIN_START(enc,plain_start,plain_end);
                 scan++;
                 BUF_SIZE_ASSERT(enc,5); /* max size of an octal value (\001) including null*/
                 if (scan >= scan_end || *scan < '0' || *scan > '7') {
@@ -501,7 +496,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
             }
         }
     }
-    CLEAR_PLAIN_START
+    CLEAR_PLAIN_START(enc,plain_start,plain_end);
     ddl_buf_cat_char(enc,'"');
 }
 
