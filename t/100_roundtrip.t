@@ -77,7 +77,8 @@ sub does_roundtrip {
     fail("undump: $name");
   }
   else {
-    is_deeply($out, $src_structure, "undump: $name");
+    is_deeply($out, $src_structure, "undump: $name")
+        or diag("serialized data was: $serialized");
   }
 
   $out = undef;

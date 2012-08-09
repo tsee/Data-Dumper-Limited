@@ -490,8 +490,8 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
               octal:
                 CLEAR_PLAIN_START
                 scan++;
-                BUF_SIZE_ASSERT(enc,6); /* max size of a hex value of an escape (assume \x{FEDCBA9876543210} is possible) including null*/
-                if (scan >= scan_end || *scan < '0' || *scan> '6') {
+                BUF_SIZE_ASSERT(enc,5); /* max size of an octal value (\001) including null*/
+                if (scan >= scan_end || *scan < '0' || *scan > '7') {
                     ulen= sprintf(enc->pos,"\\%"UVof,cp);
                     enc->pos += ulen;
                 } else {
