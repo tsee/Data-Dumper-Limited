@@ -6,6 +6,7 @@
 #define BUFFER_GROWTH_FACTOR 1.5
 
 /* buffer operations */
+#define BUF_POS_OFS(enc) ((enc)->pos - (enc)->buf_start)
 #define BUF_SPACE(enc) ((enc)->buf_end - (enc)->pos)
 #define BUF_SIZE(enc) ((enc)->buf_end - (enc)->buf_start)
 #define BUF_NEED_GROW(enc, minlen) ((size_t)BUF_SPACE(enc) <= minlen)

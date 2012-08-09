@@ -292,7 +292,8 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
     const U8 *plain_end= 0;
     UV cp;
     STRLEN ulen;
-
+    int has_escapes= 0;
+    STRLEN quote_ofs= BUF_POS_OFS(enc);
 #define CLEAR_PLAIN_START(enc, plain_start, plain_end)                                          \
     STMT_START {                                                                                \
         if (plain_start) {                                                                      \
@@ -347,6 +348,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
             *enc->pos++= '\\';
             *enc->pos++= cp;
             scan++;
+            has_escapes= 1;
             break;
         case 1:
         case 2:
@@ -472,6 +474,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
             break;
         default:
             if ( is_utf8 ) {
+                has_escapes= 1;
                 CLEAR_PLAIN_START(enc,plain_start,plain_end);
                 // cp=  Perl_utf8_to_uvchr_buf(aTHX_ scan, scan_end, &ulen);
                 cp= Perl_utf8_to_uvchr(aTHX_ (U8 *)scan, &ulen);
@@ -481,6 +484,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
                 enc->pos += ulen;
             } else {
               octal:
+                has_escapes= 1;
                 CLEAR_PLAIN_START(enc,plain_start,plain_end);
                 scan++;
                 BUF_SIZE_ASSERT(enc,5); /* max size of an octal value (\001) including null*/
@@ -495,6 +499,11 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
         }
     }
     CLEAR_PLAIN_START(enc,plain_start,plain_end);
-    ddl_buf_cat_char(enc,'"');
+    if (has_escapes) {
+        ddl_buf_cat_char(enc,'"');
+    } else {
+        ddl_buf_cat_char(enc,'\'');
+        enc->buf_start[quote_ofs]='\'';
+    }
 }
 

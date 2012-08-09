@@ -20,7 +20,7 @@ is(DumpLimited(-2.1111), "-2.1111", "negative float");
     my $latin1= "Ba\xDF";
     my $uni= $latin1;
     utf8::upgrade($uni);
-    is(DumpLimited("foo"), '"foo"', "string - simple");
+    is(DumpLimited("foo"), "'foo'", "string - simple");
     is(DumpLimited($latin1), '"Ba\\337"', "0xDF - string latin");
     is(DumpLimited($uni), '"Ba\\x{df}"', "0xDF - string uni");
     for my $want (
@@ -52,8 +52,8 @@ is(DumpLimited([]), "[]", "empty array");
 is(DumpLimited([1, 2.1]), "[1,2.1]", "array with numbers");
 is(DumpLimited([[[],[]],[]]), "[[[],[]],[]]", "nested arrays");
 
-is(DumpLimited({"" => [1,2,3]}), q!{"",[1,2,3]}!, "hash with empty string key");
-is(DumpLimited({"aaa" => [1,2,3]}), q!{"aaa",[1,2,3]}!, "hash with simple key");
+is(DumpLimited({"" => [1,2,3]}), q!{'',[1,2,3]}!, "hash with empty string key");
+is(DumpLimited({"aaa" => [1,2,3]}), q!{'aaa',[1,2,3]}!, "hash with simple key");
 
 is(DumpLimited([\$x, \$x]), "[\\2.1,\\2.1]", "multiple identical refs");
 
