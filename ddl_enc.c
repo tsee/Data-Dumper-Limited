@@ -465,12 +465,9 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
         case '}':
         case '~':
         case 127:
-            if (plain_start) {
-                plain_end= ++scan;
-            } else {
+            if (!plain_start)
                 plain_start= scan;
-                plain_end= ++scan;
-            }
+            plain_end= ++scan;
             break;
         default:
             if ( is_utf8 ) {
