@@ -38,7 +38,7 @@ void ddl_destructor_hook(void *p)
 /* Builds the C-level configuration and state struct.
  * Automatically freed at scope boundary. */
 ddl_encoder_t *
-build_encoder_struct(pTHX_ HV *opt, SV *src_data)
+build_encoder_struct(pTHX_ HV *opt)
 {
   ddl_encoder_t *enc;
   SV **svp;

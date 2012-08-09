@@ -14,7 +14,7 @@ typedef struct {
   ptable_ptr seenhash; /* ptr table for avoiding circular refs */
 } ddl_encoder_t;
 
-ddl_encoder_t *build_encoder_struct(pTHX_ HV *opt, SV *src_data);
+ddl_encoder_t *build_encoder_struct(pTHX_ HV *opt);
 
 /* entry point */
 void ddl_dump_sv(pTHX_ ddl_encoder_t *enc, SV *src);

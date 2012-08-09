@@ -18,7 +18,7 @@ DumpLimited(src, opt = newHV())
   PREINIT:
     ddl_encoder_t *enc;
   PPCODE:
-    enc = build_encoder_struct(aTHX_ opt, src);
+    enc = build_encoder_struct(aTHX_ opt);
     ddl_dump_sv(aTHX_ enc, src);
     /* FIXME optimization: avoid copy by stealing string buffer if
      *                     it is not too large. */

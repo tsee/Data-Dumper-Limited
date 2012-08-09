@@ -57,7 +57,8 @@ typedef struct PTABLE            PTABLE_t;
 
 static PTABLE_t * PTABLE_new(void);
 static PTABLE_ENTRY_t * PTABLE_find(PTABLE_t *tbl, const void *key);
-static void * PTABLE_fetch(PTABLE_t *tbl, const void *key);
+/* commented since unused */
+/* static void * PTABLE_fetch(PTABLE_t *tbl, const void *key); */
 static void PTABLE_store(PTABLE_t *tbl, void *key, void *value);
 static void PTABLE_delete(PTABLE_t *tbl, void *key);
 static void PTABLE_grow(PTABLE_t *tbl);
@@ -91,12 +92,13 @@ PTABLE_find(PTABLE_t *tbl, const void *key) {
     return NULL;
 }
 
-static void *
+/* commented since unused */
+/* static void *
 PTABLE_fetch(PTABLE_t *tbl, const void *key)
 {
     PTABLE_ENTRY_t const *const tblent = PTABLE_find(tbl, key);
     return tblent ? tblent->value : NULL;
-}
+} */
 
 /* add a new entry to a pointer => pointer table */
 
