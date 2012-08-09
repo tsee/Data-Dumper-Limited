@@ -36,7 +36,7 @@ WriteMakefile1(
     VERSION_FROM      => 'lib/Data/Dumper/Limited.pm', # finds $VERSION
     PREREQ_PM         => {
         'XSLoader' => 0,
-        'Data::Undump' => 0.01,
+        'Data::Undump' => 0.08,
         'Scalar::Util' => 0,
     }, # e.g., Module::Name => 1.1
     LICENSE => 'perl',
