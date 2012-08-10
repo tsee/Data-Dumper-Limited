@@ -27,8 +27,8 @@ my @tests = (
   [$uni, "unicode string"],
   ["a\nb", "string with newline"],
 
-  [\undef, "constant scalar undef ref", "unimplemented in Data::Undump"],
-  [\"foo", "constant scalar string ref", "unimplemented in Data::Undump"],
+  [\undef, "constant scalar undef ref"],
+  [\"foo", "constant scalar string ref"],
 
   [[], "empty array ref"],
   [{}, "empty hash ref"],
@@ -42,7 +42,7 @@ my @tests = (
 
   [[[1], [2, [3]]], "nested array ref"],
   [[[1], { foo => [2, [3, {bar => 'baz'}]]}], "nested array and hash refs"],
-  [[[1], { foo => [2, [3, {bar => \'baz'}, \[]]]}], "nested array/hash/scalar refs", "unimplemented in Data::Undump"],
+  [[[1], { foo => [2, [3, {bar => \'baz'}, \[]]]}], "nested array/hash/scalar refs"],
 
   [[$aryref, $aryref], "repeated substructure"],
   do {my $x = [$aryref, $aryref]; weaken($x->[0]); [$x, "repeated substructure, weaken"] },
