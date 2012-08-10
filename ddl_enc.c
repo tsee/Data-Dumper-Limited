@@ -193,7 +193,7 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
       goto done;
     }
     else if (enc->flags & F_DUMP_OBJECTS_AS_BLESSED) {
-      ddl_buf_cat_str_s(enc, "do{bless ");
+      ddl_buf_cat_str_s(enc, "bless(");
       blessed_object = 1;
     }
     else
@@ -218,7 +218,7 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
   }
 
 done:
-  /* finish writing the do{bless XXX,"classname"} call */
+  /* finish writing the bless(XXX,"classname") call */
   if (blessed_object) {
     /* FIXME this should probably do ' escaping! */
     const char *class_name = HvNAME(SvSTASH(src));
@@ -226,7 +226,7 @@ done:
     BUF_SIZE_ASSERT(enc, len + 4);
     ddl_buf_cat_str_s_nocheck(enc, ",'");
     ddl_buf_cat_str_nocheck(enc, class_name, len);
-    ddl_buf_cat_str_s_nocheck(enc, "'}");
+    ddl_buf_cat_str_s_nocheck(enc, "')");
   }
 
   /* If we DO allow multiple occurrence of the same ref (default), then
