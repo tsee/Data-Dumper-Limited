@@ -17,6 +17,7 @@
 #define F_UNDEF_BLESSED                 1UL
 #define F_DISALLOW_MULTI_OCCURRENCE     2UL
 #define F_DUMP_OBJECTS_AS_UNBLESSED     4UL
+#define F_DUMP_OBJECTS_AS_BLESSED       8UL
 
 /* some static function declarations */
 static void ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src);
@@ -54,17 +55,30 @@ build_encoder_struct(pTHX_ HV *opt)
   enc->depth = 0;
   enc->flags = 0;
 
+  /* TODO: We could do this lazily: Only if there's references with high refcount/weakrefs */
+  enc->seenhash = PTABLE_new();
+
+  /* load options */
   if (opt != NULL) {
     if ( (svp = hv_fetchs(opt, "undef_blessed", 0)) && SvTRUE(*svp))
       enc->flags |= F_UNDEF_BLESSED;
     if ( (svp = hv_fetchs(opt, "disallow_multi", 0)) && SvTRUE(*svp))
       enc->flags |= F_DISALLOW_MULTI_OCCURRENCE;
-    if ( (svp = hv_fetchs(opt, "objects_unblessed", 0)) && SvTRUE(*svp))
+    if ( (svp = hv_fetchs(opt, "objects_as_unblessed", 0)) && SvTRUE(*svp))
       enc->flags |= F_DUMP_OBJECTS_AS_UNBLESSED;
+    if ( (svp = hv_fetchs(opt, "dump_objects", 0)) && SvTRUE(*svp))
+      enc->flags |= F_DUMP_OBJECTS_AS_BLESSED;
   }
-
-  /* TODO: We could do this lazily: Only if there's references with high refcount/weakrefs */
-  enc->seenhash = PTABLE_new();
+  /* option vlaidation */
+  /* FIXME my bit field fu is weak, apparently. Needs replacing with proper idiom */
+  if (   (enc->flags & F_UNDEF_BLESSED ? 1 : 0)
+       + (enc->flags & F_DUMP_OBJECTS_AS_UNBLESSED ? 1 : 0)
+       + (enc->flags & F_DUMP_OBJECTS_AS_BLESSED ? 1 : 0)
+       > 1)
+  {
+    croak("Can only have one of 'undef_blessed', "
+          "'objects_as_unblessed', and 'dump_objects' options at a time.");
+  }
 
   return enc;
 }
@@ -153,6 +167,7 @@ static void
 ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
 {
   svtype svt;
+  int blessed_object = 0;
 
   if (++enc->depth > MAX_DEPTH) {
     croak("Reached maximum recursion depth of %u. Aborting", MAX_DEPTH);
@@ -173,13 +188,20 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
   }
 
   if (SvOBJECT(src) && (0 == (enc->flags & F_DUMP_OBJECTS_AS_UNBLESSED))) {
-    if (enc->flags & F_UNDEF_BLESSED)
+    if (enc->flags & F_UNDEF_BLESSED) {
       ddl_buf_cat_str_s(enc, "undef");
+      goto done;
+    }
+    else if (enc->flags & F_DUMP_OBJECTS_AS_BLESSED) {
+      ddl_buf_cat_str_s(enc, "do{bless ");
+      blessed_object = 1;
+    }
     else
       croak("Encountered object '%s', but undef_blessed setting is not enabled",
             SvPV_nolen(sv_2mortal(newRV_inc(src))));
   }
-  else if (svt == SVt_PVHV)
+
+  if (svt == SVt_PVHV)
     ddl_dump_hv(aTHX_ enc, (HV *)src);
   else if (svt == SVt_PVAV)
     ddl_dump_av(aTHX_ enc, (AV *)src);
@@ -193,6 +215,18 @@ ddl_dump_rv(pTHX_ ddl_encoder_t *enc, SV *src)
   else {
     croak("found %s, but it is not representable by Data::Dumper::Limited serialization",
            SvPV_nolen(sv_2mortal(newRV_inc(src))));
+  }
+
+done:
+  /* finish writing the do{bless XXX,"classname"} call */
+  if (blessed_object) {
+    /* FIXME this should probably do ' escaping! */
+    const char *class_name = HvNAME(SvSTASH(src));
+    const size_t len = strlen(class_name);
+    BUF_SIZE_ASSERT(enc, len + 4);
+    ddl_buf_cat_str_s_nocheck(enc, ",'");
+    ddl_buf_cat_str_nocheck(enc, class_name, len);
+    ddl_buf_cat_str_s_nocheck(enc, "'}");
   }
 
   /* If we DO allow multiple occurrence of the same ref (default), then

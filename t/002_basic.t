@@ -81,5 +81,7 @@ undef $r->[0];
 $r = [$x, $x];
 ok(not(eval {DumpLimited($r, {disallow_multi => 1}); 1}) && $@, "non-cyclic, repeated refs barf under disallow_multi");
 
+is(DumpLimited(bless({a => "b"} => "Foo"), {dump_objects => 1}), "do{bless {'a','b'},'Foo'}", "Simple hashref object");
+
 
 done_testing();

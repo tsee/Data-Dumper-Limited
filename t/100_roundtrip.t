@@ -49,6 +49,9 @@ my @tests = (
 
   [qr/foo/, "regexp", "this is treated as an object. Not implemented in DDL"],
   [[qr/foo/], "aryref to regexp", "this is treated as an object. Not implemented in DDL"],
+
+  [bless({a => 'b'}, "Foo"), "Simple hash-based object", "Not implemented in Data::Undump", {dump_objects => 1}],
+  [[bless({a => bless([1,2,3] => 'fghüjk')}, "Foo")], "Nested objects", "Not implemented in Data::Undump", {dump_objects => 1}],
 );
 
 foreach my $test (@tests) {
@@ -56,13 +59,13 @@ foreach my $test (@tests) {
 }
 
 sub does_roundtrip {
-  my ($src_structure, $name, $todo) = @_;
+  my ($src_structure, $name, $todo, $opt) = @_;
 
   local $TODO;
-  $TODO = $todo if defined $todo;
+  $TODO = $todo if defined $todo and $todo ne '';
 
   my $serialized;
-  eval {$serialized = DumpLimited($src_structure); 1}
+  eval {$serialized = DumpLimited($src_structure, $opt ? ($opt) : ()); 1}
   or do {
     note("DumpLimited() failed with exception '$@'");
     fail("DumpLimited(): $name");
