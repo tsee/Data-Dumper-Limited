@@ -34,22 +34,23 @@ ddl_buf_grow_nocheck(pTHX_ ddl_encoder_t *enc, size_t minlen)
   } STMT_END
 
 inline void
-ddl_buf_cat_str(pTHX_ ddl_encoder_t *enc, const char *str, size_t len)
+ddl_buf_cat_str_int(pTHX_ ddl_encoder_t *enc, const char *str, size_t len)
 {
   BUF_SIZE_ASSERT(enc, len);
   Copy(str, enc->pos, len, char);
   enc->pos += len;
 }
+#define ddl_buf_cat_str(enc, str, len) ddl_buf_cat_str_int(aTHX_ enc, str, len)
+#define ddl_buf_cat_str_s(enc, str) ddl_buf_cat_str(enc, ("" str), strlen("" str))
 
 inline void
-ddl_buf_cat_str_nocheck(pTHX_ ddl_encoder_t *enc, const char *str, size_t len)
+ddl_buf_cat_str_nocheck_int(pTHX_ ddl_encoder_t *enc, const char *str, size_t len)
 {
   Copy(str, enc->pos, len, char);
   enc->pos += len;
 }
-
-#define ddl_buf_cat_str_s(enc, str) ddl_buf_cat_str(aTHX_ enc, ("" str), strlen("" str))
-#define ddl_buf_cat_str_s_nocheck(enc, str) ddl_buf_cat_str_nocheck(aTHX_ enc, ("" str), strlen("" str))
+#define ddl_buf_cat_str_nocheck(enc, str, len) ddl_buf_cat_str_nocheck_int(aTHX_ enc, str, len)
+#define ddl_buf_cat_str_s_nocheck(enc, str) ddl_buf_cat_str_nocheck(enc, ("" str), strlen("" str))
 
 inline void
 ddl_buf_cat_char_int(pTHX_ ddl_encoder_t *enc, const char c)

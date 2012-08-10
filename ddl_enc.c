@@ -297,7 +297,7 @@ ddl_dump_pv(pTHX_ ddl_encoder_t *enc, const char* src, STRLEN src_len, int is_ut
 #define CLEAR_PLAIN_START(enc, plain_start, plain_end)                                          \
     STMT_START {                                                                                \
         if (plain_start) {                                                                      \
-            ddl_buf_cat_str(aTHX_ enc, (const char *)plain_start, plain_end - plain_start);     \
+            ddl_buf_cat_str(enc, (const char *)plain_start, plain_end - plain_start);     \
             plain_start= plain_end= 0;                                                          \
         }                                                                                       \
     } STMT_END
