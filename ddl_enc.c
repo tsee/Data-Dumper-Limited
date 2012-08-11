@@ -224,9 +224,9 @@ done:
     const char *class_name = HvNAME(SvSTASH(src));
     const size_t len = strlen(class_name);
     BUF_SIZE_ASSERT(enc, len + 4);
-    ddl_buf_cat_str_s_nocheck(enc, ",'");
-    ddl_buf_cat_str_nocheck(enc, class_name, len);
-    ddl_buf_cat_str_s_nocheck(enc, "')");
+    ddl_buf_cat_str_s_nocheck(enc, ",");
+    ddl_dump_pv(aTHX_ enc,class_name,len,0);
+    ddl_buf_cat_str_s_nocheck(enc, ")");
   }
 
   /* If we DO allow multiple occurrence of the same ref (default), then
