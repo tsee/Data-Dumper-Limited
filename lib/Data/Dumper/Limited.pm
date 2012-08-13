@@ -11,7 +11,7 @@ our @EXPORT_OK = qw(DumpLimited);
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
 
 XSLoader::load('Data::Dumper::Limited', $VERSION);
-he 
+
 1;
 
 __END__
