@@ -17,7 +17,9 @@ ddl_buf_grow_nocheck(pTHX_ ddl_encoder_t *enc, size_t minlen)
 {
   const size_t cur_size = BUF_SIZE(enc);
   const size_t new_size = 100 + MAX(minlen, (size_t)(cur_size * BUFFER_GROWTH_FACTOR));
+  const size_t old_offset = BUF_POS_OFS(enc);
   Renew(enc->buf_start, new_size, char);
+  enc->pos = enc->buf_start + old_offset;
   enc->buf_end = (char *)(enc->buf_start + new_size);
 }
 
