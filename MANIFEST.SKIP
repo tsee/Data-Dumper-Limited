@@ -49,3 +49,4 @@
 \B\.DS_Store
 #   Mac OSX SMB mount metadata files
 \B\._
+\bMYMETA\.(?:yml|json)$
