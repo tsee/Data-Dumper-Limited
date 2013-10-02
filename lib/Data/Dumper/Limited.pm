@@ -5,7 +5,7 @@ use warnings;
 use Carp qw/croak/;
 use XSLoader;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 use Exporter 'import';
 our @EXPORT_OK = qw(DumpLimited);
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
@@ -116,7 +116,7 @@ problem domain.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012 by Steffen Mueller
+Copyright (C) 2012, 2013 by Steffen Mueller
 
 Except portions taken from Marc Lehmann's code for the JSON::XS
 module. The license for JSON::XS is the same as for this module:
